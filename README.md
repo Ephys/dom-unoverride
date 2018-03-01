@@ -8,7 +8,7 @@ Install using `npm install --save dom-unoverride`
 
 Access it using:
 
-`import ... from 'dom-unoverride';` (ESM )
+`import ... from 'dom-unoverride';` (ESM, see below for exported names).
 
 `const unoverride = require('dom-unoverride');` (CJS)
 
