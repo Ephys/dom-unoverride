@@ -15,130 +15,246 @@ describe('HTMLFormElement', () => {
     page = await global.__BROWSER__.newPage();
     await page.goto('about:blank');
     await page.addScriptTag({ path: './dist/bundle.js' });
-  });
+    await page.evaluate(() => {
+      const script = document.createElement('script');
 
-  it('gets properties that would otherwise be overridden by a named field', async () => {
-    const className = await page.evaluate(() => {
-      document.body.innerHTML = `
-        <form method="POST" name="location" action="http://google.com" class="hello">
-          <input type="text" name="className" value="create" />
-        </form>
+      // language=JavaScript
+      script.innerHTML = `
+        function stringify(val) {
+          if (val === null || typeof val !== 'object') {
+            return val;
+          }
+
+          return String(val);
+        }
       `;
 
-      const form = document.querySelector('form');
+      document.head.appendChild(script);
+    });
+  });
+
+  function getFormProperty({ html, target = 'form', key }) {
+    return page.evaluate((html, target, key) => {
+      document.body.innerHTML = html;
+
+      const form = document.querySelector(target);
       const unoverride = window['x-unoverride'];
 
       return {
-        unsafe: form.className,
-        safe: unoverride.getFormProperty(form, 'className'),
+        unsafe: stringify(form[key]),
+        safe: stringify(unoverride.getFormProperty(form, key)),
       };
+    }, html, target, key);
+  }
+
+  it('gets properties that would otherwise be overridden by a named field', async () => {
+    const className = await getFormProperty({
+      html: `
+        <form class="hello">
+          <input type="text" name="className" value="create" />
+        </form>
+      `,
+      key: 'className',
     });
 
-    // the className should have been been overwritten by the input[name=className]
-    expect(typeof className.unsafe).toEqual('object');
-    expect(typeof className.safe).toEqual('string');
+    expect(className.unsafe).toEqual('[object HTMLInputElement]');
     expect(className.safe).toEqual('hello');
   });
 
   it('gets properties that would otherwise be overridden by a field with ID', async () => {
-    const className = await page.evaluate(() => {
-      document.body.innerHTML = `
-        <form method="POST" name="location" action="http://google.com" class="hello">
+    const className = await getFormProperty({
+      html: `
+        <form class="hello">
           <input type="text" id="className" value="create" />
         </form>
-      `;
-
-      const form = document.querySelector('form');
-      const unoverride = window['x-unoverride'];
-
-      return {
-        unsafe: form.className,
-        safe: unoverride.getFormProperty(form, 'className'),
-      };
+      `,
+      key: 'className',
     });
 
-    // the className should have been been overwritten by the input[name=className]
-    expect(typeof className.unsafe).toEqual('object');
-    expect(typeof className.safe).toEqual('string');
+    expect(className.unsafe).toEqual('[object HTMLInputElement]');
     expect(className.safe).toEqual('hello');
   });
 
-  it('gets properties that would otherwise be overridden by multiple named fields', async () => {
-    const className = await page.evaluate(() => {
-      document.body.innerHTML = `
-        <form method="POST" name="location" action="http://google.com" class="hello">
+  it('gets properties that would otherwise be overridden by multiple fields that share the same name', async () => {
+    const className = await getFormProperty({
+      html: `
+        <form class="hello">
           <input type="text" name="className" value="create" />
           <input type="text" name="className" value="delete" />
         </form>
-      `;
-
-      const form = document.querySelector('form');
-      const unoverride = window['x-unoverride'];
-
-      return {
-        unsafe: form.className,
-        safe: unoverride.getFormProperty(form, 'className'),
-      };
+      `,
+      key: 'className',
     });
 
     // the className should have been been overwritten by the input[name=className]
-    expect(typeof className.unsafe).toEqual('object');
-    expect(typeof className.safe).toEqual('string');
+    expect(className.unsafe).toEqual('[object RadioNodeList]');
     expect(className.safe).toEqual('hello');
   });
 
-  it('works with elements outside the form', async () => {
-    const className = await page.evaluate(() => {
-      document.body.innerHTML = `
-        <form method="POST" name="location" action="http://google.com" class="hello" id="my-form"></form>
-        <input type="text" name="className" value="create" form="my-form" />
-      `;
-
-      const form = document.querySelector('form');
-      const unoverride = window['x-unoverride'];
-
-      return {
-        unsafe: form.className,
-        safe: unoverride.getFormProperty(form, 'className'),
-      };
+  it('gets properties that would otherwise be overridden by multiple named fields that share the same name and the name is an index', async () => {
+    const property = await getFormProperty({
+      html: `
+        <form class="hello">
+          <input type="text" name="1" value="create" />
+          <select name="1"></select>
+        </form>
+      `,
+      key: '1',
     });
 
-    expect(typeof className.unsafe).toEqual('object');
-    expect(typeof className.safe).toEqual('string');
+    // the className should have been been overwritten by the input[name=className]
+    expect(property.unsafe).toEqual('[object HTMLSelectElement]');
+    expect(property.safe).toEqual(undefined);
+  });
+
+  it('gets properties that would otherwise be overridden by elements placed outside the form, but owned by the form', async () => {
+    const className = await getFormProperty({
+      html: `
+        <form class="hello" id="my-form"></form>
+        <input type="text" name="className" value="create" form="my-form" />
+      `,
+      key: 'className',
+    });
+
+    expect(className.unsafe).toEqual('[object HTMLInputElement]');
     expect(className.safe).toEqual('hello');
   });
 
   it('skips elements not part of the form', async () => {
-    const className = await page.evaluate(() => {
-      document.body.innerHTML = `
-        <form method="POST" name="location" action="http://google.com" class="hello" id="my-form">
+    const className = await getFormProperty({
+      html: `
+        <form class="hello" id="my-form">
           <input type="text" name="className" value="create" form="my-other-form" />
         </form>
         
-        <form method="POST" name="location" action="http://google.com" class="hello" id="my-other-form"></form>
-      `;
+        <form method="POST" id="my-other-form"></form>
+      `,
+      target: '#my-form',
+      key: 'className',
+    });
 
-      const form = document.querySelector('#my-form');
+    // should not be overridden
+    expect(className.unsafe).toEqual('hello');
+    expect(className.safe).toEqual('hello');
+  });
+
+  it('gets properties that would otherwise be overridden by a named image', async () => {
+    const className = await getFormProperty({
+      html: `
+        <form class="hello" >
+          <img name="className" />
+        </form>
+      `,
+      key: 'className',
+    });
+
+    // should not be overridden
+    expect(className.unsafe).toEqual('[object HTMLImageElement]');
+    expect(className.safe).toEqual('hello');
+  });
+
+  it('gets properties that would otherwise be overridden by an image with ID', async () => {
+    const className = await getFormProperty({
+      html: `
+        <form class="hello" >
+          <img id="className" />
+        </form>
+      `,
+      key: 'className',
+    });
+
+    // should not be overridden
+    expect(className.unsafe).toEqual('[object HTMLImageElement]');
+    expect(className.safe).toEqual('hello');
+  });
+
+  it('gets properties that would otherwise be overridden by multiple images that share the same name', async () => {
+    const className = await getFormProperty({
+      html: `
+        <form class="hello" >
+          <img name="className" />
+          <img name="className" />
+        </form>
+      `,
+      key: 'className',
+    });
+
+    // should not be overridden
+    expect(className.unsafe).toEqual('[object RadioNodeList]');
+    expect(className.safe).toEqual('hello');
+  });
+
+  it('gets properties that would otherwise be overridden by an image and an input sharing the same name', async () => {
+    // imgs are only listed if there are no matching inputs, we need to make sure that IMG even if there are inputs.
+    const className = await getFormProperty({
+      html: `
+        <form class="hello">
+          <img name="className" />
+          <input name="className" />
+        </form>
+      `,
+      key: 'className',
+    });
+
+    // should not be overridden
+    expect(className.unsafe).toEqual('[object HTMLInputElement]');
+    expect(className.safe).toEqual('hello');
+  });
+
+  it('doesn\'t lose custom image properties', async () => {
+    const property = await page.evaluate(() => {
+      document.body.innerHTML = `<form></form>`;
+
+      const img = new Image();
+      img.name = 'my-pretty-image';
+      document.body.appendChild(img);
+
+      const form = document.querySelector('form');
+      form.appendChild(img);
+
+      const key = 'x-custom-key';
+
+      // The image is named, in the document, even a child of the form, but the name mismatches the key.
+      form[key] = img;
+
       const unoverride = window['x-unoverride'];
 
       return {
-        unsafe: form.className,
-        safe: unoverride.getFormProperty(form, 'className'),
+        unsafe: stringify(form[key]),
+        safe: stringify(unoverride.getFormProperty(form, key)),
       };
     });
 
     // should not be overridden
-    expect(typeof className.unsafe).toEqual('string');
-    expect(typeof className.safe).toEqual('string');
-    expect(className.safe).toEqual('hello');
+    expect(property.unsafe).toEqual('[object HTMLImageElement]');
+    expect(property.safe).toEqual('[object HTMLImageElement]');
+  });
+
+  it('doesn\'t lose custom input properties', async () => {
+    const property = await page.evaluate(() => {
+      document.body.innerHTML = `<form></form>`;
+
+      const input = document.createElement('input');
+      input.name = 'my-pretty-image';
+
+      const form = document.querySelector('form');
+      form.appendChild(input);
+
+      const key = 'x-custom-key';
+
+      // The image is named, in the document, even a child of the form, but the name mismatches the key.
+      form[key] = input;
+
+      const unoverride = window['x-unoverride'];
+
+      return {
+        unsafe: stringify(form[key]),
+        safe: stringify(unoverride.getFormProperty(form, key)),
+      };
+    });
+
+    // should not be overridden
+    expect(property.unsafe).toEqual('[object HTMLInputElement]');
+    expect(property.safe).toEqual('[object HTMLInputElement]');
   });
 });
-
-/*
- * LIST OF TESTS TO IMPLEMENT
- * - HTMLFormElement ()
- *   - Works with multiple inputs with same name or id
- *   - Works with child images that have an ID or name property
- *   - Check what happens if the HTMLFormElement has an <input> and an <img> with the same name
- *   - Check that the .className returns the className and not the property
- */
