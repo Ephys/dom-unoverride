@@ -119,6 +119,33 @@ function sanitizeIndices(form, property, thirdArg, callback) {
   return result;
 }
 
+/**
+ * Version of sanitizedMethod that removes all inputs of a collection (we get collections when names collide).
+ */
+function sanitizeCollection(form, property, thirdArg, callback) {
+  const evilInputsLive = form[property];
+  const evilInputsInert = [];
+  const placeholders = [];
+
+  for (let i = evilInputsLive.length - 1; i >= 0; i--) {
+    const evilInput = evilInputsLive[i];
+    const placeholder = makePlaceholder();
+
+    placeholders.push(placeholder);
+    evilInputsInert.push(evilInput);
+
+    evilInput.replaceWith(placeholder);
+  }
+
+  const result = callback(form, property, thirdArg);
+
+  for (let i = evilInputsInert.length - 1; i >= 0; i--) {
+    placeholders[i].replaceWith(evilInputsInert[i]);
+  }
+
+  return result;
+}
+
 function isIndiceProperty(property) {
   return /^\d+$/.test(property);
 }
@@ -129,6 +156,7 @@ function sanitizeFormMethod(callback) {
       return callback(form, property, thirdArg);
     }
 
+    // getting numeric property (form[0])
     if (isIndiceProperty(property)) {
       // delegate to a less optimised version that removes all inputs.
       return sanitizeIndices(form, property, thirdArg, callback);
@@ -136,19 +164,22 @@ function sanitizeFormMethod(callback) {
 
     const evilInput = form[property];
 
-    /**
-     * Some caveats:
-     * - If an HTMLFormElement has multiple children with the same name, evilInput will be
-     */
+    // When two inputs have the same name
+    if (isHtmlCollection(evilInput)) {
+      // delegate to a less optimised version that removes all inputs from the collection.
+      return sanitizeCollection(form, property, thirdArg, callback);
+    }
 
     evilInput.replaceWith(placeholder);
-
     const result = callback(form, property, thirdArg);
-
     placeholder.replaceWith(evilInput);
 
     return result;
   };
+}
+
+function isHtmlCollection(item) {
+  return typeof item.length === 'number' && item.constructor.name === 'RadioNodeList';
 }
 
 const proxyHandler = {
