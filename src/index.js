@@ -34,6 +34,10 @@ const placeholder = makePlaceholder();
 
 function isOverridden(form, property) {
   if (!Object.prototype.hasOwnProperty.call(form.elements, property)) {
+    if (isHtmlImage(form[property])) {
+      return true;
+    }
+
     return false;
   }
 
@@ -180,6 +184,14 @@ function sanitizeFormMethod(callback) {
 
 function isHtmlCollection(item) {
   return typeof item.length === 'number' && item.constructor.name === 'RadioNodeList';
+}
+
+function isHtmlImage(value) {
+  if (value == null) {
+    return false;
+  }
+
+  return value.constructor.name === 'HTMLImageElement';
 }
 
 const proxyHandler = {
