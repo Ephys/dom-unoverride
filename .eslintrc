@@ -1,0 +1,11 @@
+{
+  "extends": "@foobarhq/eslint-config",
+  "rules": {
+    "no-underscore-dangle": 0,
+    "no-use-before-define": 0
+  },
+  "env": {
+    "browser": true,
+    "jest": true
+  }
+}
