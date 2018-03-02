@@ -16,7 +16,9 @@ Access it using:
 
 ## The problem
 
-**TL;DR**: Adding a named input to an HTML form will create an eponymous property on that form's DOM object. That property is allowed to override built-ins/standard.
+**TL;DR**: Adding a named input to an HTML form will create an eponymous property on that form's DOM object. That property is allowed to override built-ins/standard.\
+The same happens with the Document object and named iframes/objects/images/etc...
+
 See issue: https://github.com/whatwg/html/issues/2212
 
 ---
@@ -55,18 +57,18 @@ The only way you can sanely retrieve the value of `form.action` is through `getA
 
 ## The solution
 
-This script provides a series of helper function to get/set/check/delete/etc properties on an `HTMLFormElement` instance while completely ignoring and hidding the added `input` elements. It also adds a method `sanitizeForm` that proxies the form and fixes everything for you (needs an environment that supports or polyfills `Proxy`).
+This script provides a series of helper function to get/set/check/delete/etc properties on a node instance while completely ignoring and hidding indesirable property-overriding elements. It also adds a method `sanitizeNode` that proxies the node and fixes everything for you (needs an environment that supports or polyfills `Proxy`).
 
 Please note that you can still use `HTMLFormElement#elements` to access the form's inputs!
 
 Here is some documentation on how to use these helper methods:
 
-### `sanitizeForm(form: HTMLFormElement): Proxy<HTMLFormElement>`
+### `sanitizeNode(node: Node): Proxy<Node>`
 
 Creates a proxy around the form that completely ignores and hides inputs added as properties on the form itself.
 
 ```javascript
-const safeForm = sanitizeForm(form);
+const safeForm = sanitizeNode(form);
 
 safeForm.action;
 // expected output: 'http://google.com'
@@ -79,61 +81,62 @@ form.action;
 // expected output: <input type="hidden" name="action" value="create" />
 ```
 
-**CAVEATS**: DOM methods must be called on a DOM object. Due to that restriction, executing any DOM method on the proxy (e.g. `safeForm.appendChild()`) will throw.
+**CAVEATS**: DOM methods must be called on a DOM object. Due to that restriction, executing any DOM method on the proxy (e.g. `safeForm.appendChild(...)`) will throw.\
+As a workaround, you can do `Node.prototype.appendChild.call(form, ...)`
 
-### `getFormProperty(form: HTMLFormElement, key: string): any`
+### `getProperty(node: Node, key: string): any`
 
-Returns the value of a property of an `HTMLFormElement`.
+Returns the value of a property of a `Node`.
 
 ```javascript
 form.action
 // expected output: <input type="hidden" name="action" value="create" />
 
-getFormProperty(form, 'action');
+getProperty(form, 'action');
 // expected output: 'http://google.com'
 ```
 
-### `setFormProperty(form: HTMLFormElement, key: string, value: any): void`
+### `setProperty(node: Node, key: string, value: any): void`
 
-Sets the value of a property of an `HTMLFormElement`.
+Sets the value of a property of a `Node`.
 
 ```javascript
-setFormProperty(form, 'action', 'https://madkings.com');
+setProperty(form, 'action', 'https://madkings.com');
 
 form.action
 // expected output: <input type="hidden" name="action" value="create" />
 
-getFormProperty(form, 'action');
+getProperty(form, 'action');
 // expected output: 'https://madkings.com'
 ```
 
-### `hasFormProperty(form: HTMLFormElement, key: string): boolean`
+### `hasProperty(node: Node, key: string): boolean`
 
-Returns whether a property exists on an `HTMLFormElement` ignoring `input`s.
+Returns whether a property exists on a `Node` ignoring intrusive elements.
 
 ```javascript
-hasFormProperty(form, 'username');
+hasProperty(form, 'username');
 // expected output: false
 
 'username' in form
 // expected output: true
 ```
 
-### `getFormOwnPropertyDescriptor(form: HTMLFormElement, key: string): PropertyDescriptor`
+### `getOwnPropertyDescriptor(node: Node, key: string): PropertyDescriptor`
 
-Returns the descriptor of a property of an `HTMLFormElement`, ingoring inputs.\
+Returns the descriptor of a property of a `Node`, ignoring intrusive elements.\
 It works exactly like `Object.getOwnPropertyDescriptor(obj, key)`.
 
-### `getFormOwnPropertyDescriptor(form: HTMLFormElement, key: string, descriptor: PropertyDescriptor): form`
+### `setOwnPropertyDescriptor(node: Node, key: string, descriptor: PropertyDescriptor): Node`
 
-Sets the descriptor of a property of an `HTMLFormElement`, ingoring inputs.\
+Sets the descriptor of a property of an `Node`, ignoring intrusive elements.\
 It works exactly like `Object.defineProperty(obj, key, descriptor)`.
 
-### `deleteFormProperty(form: HTMLFormElement, key: string): void`
+### `deleteProperty(node: Node, key: string): void`
 
-Deletes a property from an `HTMLFormElement`, ignoring inputs.\
-It works like `delete form.<property>`.
+Deletes a property from a `Node`, ignoring intrusive elements.\
+It works like `delete node.<property>`.
 
-### `getFormOwnKeys(form: HTMLFormElement): Array<string|Symbol>`
+### `getOwnKeys(sode: Node): Array<string|Symbol>`
 
-Like `Reflect.ownKeys` but ignores HTML inputs.
+Like `Reflect.ownKeys` but ignores intrusive elements.
