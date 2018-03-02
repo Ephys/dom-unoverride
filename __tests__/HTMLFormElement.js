@@ -33,18 +33,18 @@ describe('HTMLFormElement', () => {
     });
   });
 
-  function getFormProperty({ html, target = 'form', key }) {
-    return page.evaluate((html, target, key) => {
+  function getFormProperty(arg) {
+    return page.evaluate(({ html, target = 'form', key }) => {
       document.body.innerHTML = html;
 
       const form = document.querySelector(target);
       const unoverride = window['x-unoverride'];
 
       return {
-        unsafe: stringify(form[key]),
-        safe: stringify(unoverride.getFormProperty(form, key)),
+        unsafe: window.stringify(form[key]),
+        safe: window.stringify(unoverride.getProperty(form, key)),
       };
-    }, html, target, key);
+    }, arg);
   }
 
   it('gets properties that would otherwise be overridden by a named field', async () => {
@@ -86,7 +86,6 @@ describe('HTMLFormElement', () => {
       key: 'className',
     });
 
-    // the className should have been been overwritten by the input[name=className]
     expect(className.unsafe).toEqual('[object RadioNodeList]');
     expect(className.safe).toEqual('hello');
   });
@@ -102,9 +101,8 @@ describe('HTMLFormElement', () => {
       key: '1',
     });
 
-    // the className should have been been overwritten by the input[name=className]
     expect(property.unsafe).toEqual('[object HTMLSelectElement]');
-    expect(property.safe).toEqual(undefined);
+    expect(property.safe).toEqual(void 0);
   });
 
   it('gets properties that would otherwise be overridden by elements placed outside the form, but owned by the form', async () => {
@@ -133,7 +131,6 @@ describe('HTMLFormElement', () => {
       key: 'className',
     });
 
-    // should not be overridden
     expect(className.unsafe).toEqual('hello');
     expect(className.safe).toEqual('hello');
   });
@@ -148,7 +145,6 @@ describe('HTMLFormElement', () => {
       key: 'className',
     });
 
-    // should not be overridden
     expect(className.unsafe).toEqual('[object HTMLImageElement]');
     expect(className.safe).toEqual('hello');
   });
@@ -163,7 +159,6 @@ describe('HTMLFormElement', () => {
       key: 'className',
     });
 
-    // should not be overridden
     expect(className.unsafe).toEqual('[object HTMLImageElement]');
     expect(className.safe).toEqual('hello');
   });
@@ -179,7 +174,6 @@ describe('HTMLFormElement', () => {
       key: 'className',
     });
 
-    // should not be overridden
     expect(className.unsafe).toEqual('[object RadioNodeList]');
     expect(className.safe).toEqual('hello');
   });
@@ -196,7 +190,6 @@ describe('HTMLFormElement', () => {
       key: 'className',
     });
 
-    // should not be overridden
     expect(className.unsafe).toEqual('[object HTMLInputElement]');
     expect(className.safe).toEqual('hello');
   });
@@ -220,12 +213,11 @@ describe('HTMLFormElement', () => {
       const unoverride = window['x-unoverride'];
 
       return {
-        unsafe: stringify(form[key]),
-        safe: stringify(unoverride.getFormProperty(form, key)),
+        unsafe: window.stringify(form[key]),
+        safe: window.stringify(unoverride.getProperty(form, key)),
       };
     });
 
-    // should not be overridden
     expect(property.unsafe).toEqual('[object HTMLImageElement]');
     expect(property.safe).toEqual('[object HTMLImageElement]');
   });
@@ -248,13 +240,30 @@ describe('HTMLFormElement', () => {
       const unoverride = window['x-unoverride'];
 
       return {
-        unsafe: stringify(form[key]),
-        safe: stringify(unoverride.getFormProperty(form, key)),
+        unsafe: window.stringify(form[key]),
+        safe: window.stringify(unoverride.getProperty(form, key)),
       };
     });
 
-    // should not be overridden
     expect(property.unsafe).toEqual('[object HTMLInputElement]');
     expect(property.safe).toEqual('[object HTMLInputElement]');
+  });
+
+  it('works when vital properties are overridden', async () => {
+    const className = await getFormProperty({
+      html: `
+        <form class="hello" >
+          <input name="className" />
+
+          <input name="length" />
+          <input name="elements" />
+          <input name="contains" />
+        </form>
+      `,
+      key: 'className',
+    });
+
+    expect(className.unsafe).toEqual('[object HTMLInputElement]');
+    expect(className.safe).toEqual('hello');
   });
 });
