@@ -216,5 +216,34 @@ describe('Document', () => {
     expect(nodeName.safe).toEqual('[object HTMLImageElement]');
   });
 
-  // TODO test getDocOwnKeys
+  it('hides overrides from own property list', async () => {
+    const docProperties = await page.evaluate(() => {
+      document.body.innerHTML = '';
+      const cleanSlate = Reflect.ownKeys(document);
+
+      document.body.innerHTML = `
+        <img name="img1" id="img12" />
+        <iframe name="iframe1"></iframe>
+        <form name="nodeName"></form>
+        <embed name="embed1" />
+        <embed name="location" />
+        <object name="object1"></object>
+        <object id="object2"></object>
+      `;
+
+      const unoverride = window['x-unoverride'];
+
+      return {
+        clean: cleanSlate,
+        unsafe: Reflect.ownKeys(document),
+        safe: unoverride.getOwnKeys(document),
+      };
+    });
+
+    const cleanSlate = docProperties.clean;
+    const badProperties = ['img12', 'img1', 'iframe1', 'nodeName', 'embed1', 'object1', 'object2'];
+
+    expect(docProperties.unsafe).toEqual(cleanSlate.concat(badProperties));
+    expect(docProperties.safe).toEqual(cleanSlate);
+  });
 });

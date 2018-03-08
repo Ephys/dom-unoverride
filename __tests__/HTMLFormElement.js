@@ -266,4 +266,37 @@ describe('HTMLFormElement', () => {
     expect(className.unsafe).toEqual('[object HTMLInputElement]');
     expect(className.safe).toEqual('hello');
   });
+
+  it('hides overrides from own property list', async () => {
+    const formProperties = await page.evaluate(() => {
+      const cleanSlate = Reflect.ownKeys(document.createElement('form'));
+
+      document.body.innerHTML = `
+        <form>
+          <input name="className" />
+          <input name="length" />
+          <input name="elements" />
+          <input name="contains" />
+          
+          <img name="†est" />
+        </form>
+      `;
+
+      const unoverride = window['x-unoverride'];
+      const form = document.querySelector('form');
+
+      return {
+        clean: cleanSlate,
+        unsafe: Reflect.ownKeys(form),
+        safe: unoverride.getOwnKeys(form),
+      };
+    });
+
+    // for HTMLFormElements, only the input indexes are added as own properties
+    const badProperties = ['0', '1', '2', '3'];
+
+    const cleanSlate = formProperties.clean;
+    expect(formProperties.unsafe).toEqual(cleanSlate.concat(badProperties));
+    expect(formProperties.safe).toEqual(cleanSlate);
+  });
 });
