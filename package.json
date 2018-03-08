@@ -13,6 +13,10 @@
     "build:watch": "rollup --config --watch",
     "prepublishOnly": "npm test"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ephys/dom-unoverride"
+  },
   "author": "Guylian Cox <guyliancox@gmail.com>",
   "license": "MIT",
   "devDependencies": {
