@@ -63,6 +63,10 @@ function isOverridden(document, property) {
     return true;
   }
 
+  if (isIframeWindow(value)) {
+    return isNamedElementOverride(document, property, value.frameElement);
+  }
+
   return false;
 }
 
@@ -107,8 +111,8 @@ const getDocOwnPropertyDescriptor = sanitizeDocMethod(getOwnPropertyDescriptor);
 const defineDocProperty = sanitizeDocMethod(defineProperty);
 const deleteDocProperty = sanitizeDocMethod(deleteProperty);
 
-function getDocOwnKeys() {
-  // TODO!
+function getDocOwnKeys(doc) {
+  return Reflect.ownKeys(doc).filter(name => !isOverridden(doc, name));
 }
 
 export {
