@@ -10,7 +10,8 @@
     "test:eslint": "eslint src",
     "test:watch": "npm run build && concurrently \"npm run build:watch\" \"jest --watchAll\"",
     "build": "rollup --config",
-    "build:watch": "rollup --config --watch"
+    "build:watch": "rollup --config --watch",
+    "prepublishOnly": "npm test"
   },
   "author": "Guylian Cox <guyliancox@gmail.com>",
   "license": "MIT",
