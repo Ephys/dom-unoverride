@@ -6,7 +6,8 @@
   "module": "dist/bundle.mjs",
   "es:next": "dist/bundle.mjs",
   "scripts": {
-    "test": "npm run build && jest",
+    "test": "npm run test:eslint && npm run build && jest",
+    "test:eslint": "eslint src",
     "test:watch": "npm run build && concurrently \"npm run build:watch\" \"jest --watchAll\"",
     "build": "rollup --config",
     "build:watch": "rollup --config --watch"
