@@ -4,13 +4,13 @@ A 2KB library (minified) that allows you to safely access properties on a form.
 
 ## Usage
 
-Install using `npm install --save dom-unoverride`
+Install using `npm install --save @madkings/dom-unoverride`
 
 Access it using:
 
-`import ... from 'dom-unoverride';` (ESM, see below for exported names).
+`import ... from '@madkings/dom-unoverride';` (ESM, see below for exported names).
 
-`const unoverride = require('dom-unoverride');` (CJS)
+`const unoverride = require('@madkings/dom-unoverride');` (CJS)
 
 `const unoverride = window['x-unoverride']` (Script, the file you need to load is located at `dist/bundle.js`)
 

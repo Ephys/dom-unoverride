@@ -1,5 +1,5 @@
 {
-  "name": "dom-unoverride",
+  "name": "@madkings/dom-unoverride",
   "version": "1.0.0",
   "description": "Bypass the DOM OverrideBuiltins behavior",
   "main": "dist/bundle.js",
